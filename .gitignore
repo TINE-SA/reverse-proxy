@@ -2,5 +2,7 @@
 *.jar
 *.log
 .DS_Store?
+.project
+.classpath
 
 target/

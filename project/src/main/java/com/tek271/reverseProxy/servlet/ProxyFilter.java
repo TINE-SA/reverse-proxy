@@ -83,25 +83,34 @@ public class ProxyFilter implements Filter {
   private static HttpUriRequest createNewRequest(HttpServletRequest request, String newUrl) throws UnsupportedEncodingException{
 	  String method = request.getMethod();
 	  if (method.equals("POST")) {
-		  List<NameValuePair> formparams = new ArrayList<NameValuePair>();
-		  Enumeration<String> en = request.getParameterNames();
-		  while (en.hasMoreElements()){
-			  String name = en.nextElement();
-			  String value = request.getParameter(name);
-			  formparams.add(new BasicNameValuePair("json", value));
-		  }
-		  UrlEncodedFormEntity entity = new UrlEncodedFormEntity(formparams, "UTF-8");
+		  UrlEncodedFormEntity entity = getEntity(request);
 		  HttpPost httppost = new HttpPost(newUrl);
 		  httppost.setEntity(entity);
 		  return httppost;
 	  }
 	  else if (method.equals("PUT")){
-		  return new HttpPut(newUrl);
+		  UrlEncodedFormEntity entity = getEntity(request);
+		  HttpPut httpPut = new HttpPut(newUrl);
+		  httpPut.setEntity(entity);
+		  return httpPut;
 	  }
 	  else {
 		  return new HttpGet(newUrl);
 	  }
   }
+
+private static UrlEncodedFormEntity getEntity(HttpServletRequest request)
+		throws UnsupportedEncodingException {
+	List<NameValuePair> formparams = new ArrayList<NameValuePair>();
+	  Enumeration<String> en = request.getParameterNames();
+	  while (en.hasMoreElements()){
+		  String name = en.nextElement();
+		  String value = request.getParameter(name);
+		  formparams.add(new BasicNameValuePair(name, value));
+	  }
+	  UrlEncodedFormEntity entity = new UrlEncodedFormEntity(formparams, "UTF-8");
+	return entity;
+}
   
   private static void executeRequest(ServletResponse response, Mapping mapping, String newUrl, HttpServletRequest request) 
           throws IOException, ClientProtocolException {

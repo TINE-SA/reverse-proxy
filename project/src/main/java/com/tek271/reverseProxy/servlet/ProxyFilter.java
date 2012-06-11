@@ -19,6 +19,7 @@ package com.tek271.reverseProxy.servlet;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.UnsupportedEncodingException;
+import java.net.URI;
 import java.util.ArrayList;
 import java.util.Enumeration;
 import java.util.List;
@@ -27,8 +28,10 @@ import javax.servlet.*;
 import javax.servlet.http.*;
 
 import org.apache.http.*;
+import org.apache.http.annotation.NotThreadSafe;
 import org.apache.http.client.*;
 import org.apache.http.client.entity.UrlEncodedFormEntity;
+import org.apache.http.client.methods.HttpEntityEnclosingRequestBase;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.client.methods.HttpPut;
@@ -41,6 +44,7 @@ import org.apache.http.params.HttpParams;
 
 import com.tek271.reverseProxy.model.Mapping;
 import com.tek271.reverseProxy.text.UrlMapper;
+import com.tek271.reverseProxy.utils.HttpDeleteWithBody;
 import com.tek271.reverseProxy.utils.Tuple2;
 
 public class ProxyFilter implements Filter {
@@ -94,6 +98,12 @@ public class ProxyFilter implements Filter {
 		  httpPut.setEntity(entity);
 		  return httpPut;
 	  }
+	  else if(method.equals("DELETE")){
+		  UrlEncodedFormEntity entity = getEntity(request);
+		  HttpDeleteWithBody httpDelete = new HttpDeleteWithBody(newUrl);
+		  httpDelete.setEntity(entity);
+		  return httpDelete;
+	  }
 	  else {
 		  return new HttpGet(newUrl);
 	  }
@@ -123,6 +133,5 @@ private static UrlEncodedFormEntity getEntity(HttpServletRequest request)
     ContentTranslator contentTranslator= new ContentTranslator(mapping, newUrl);
     contentTranslator.translate(entity, response);
   }
-
   
 }

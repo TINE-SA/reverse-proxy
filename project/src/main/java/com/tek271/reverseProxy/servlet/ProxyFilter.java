@@ -140,13 +140,13 @@ public class ProxyFilter implements Filter {
     private static void executeRequest(ServletResponse response, Mapping mapping, String newUrl, HttpServletRequest request)
             throws IOException {
         HttpClient httpclient = new DefaultHttpClient();
-
         HttpUriRequest httpRequest = createNewRequest(request, newUrl);
         HttpResponse r = httpclient.execute(httpRequest);
         HttpEntity entity = r.getEntity();
 
         ContentTranslator contentTranslator = new ContentTranslator(mapping, newUrl);
         contentTranslator.translate(entity, response);
+        contentTranslator.translateResponseCode(r, response);
     }
 
 }

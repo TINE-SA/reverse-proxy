@@ -17,44 +17,51 @@ along with Tek271 Reverse Proxy Server.  If not, see http://www.gnu.org/licenses
 package com.tek271.reverseProxy.servlet;
 
 import javax.servlet.ServletResponse;
-
-import org.apache.http.HttpEntity;
+import javax.servlet.http.HttpServletResponse;
 
 import com.tek271.reverseProxy.model.Mapping;
-import com.tek271.reverseProxy.text.*;
+import com.tek271.reverseProxy.text.TextTranslator;
+import org.apache.http.HttpEntity;
+import org.apache.http.HttpResponse;
 
 public class ContentTranslator {
 
-  private final Mapping mapping;
-  private final String newUrl;
-  
-  public ContentTranslator(Mapping mapping, String newUrl) {
-    this.mapping= mapping;
-    this.newUrl= newUrl;
-  }
-  
-  public void translate(HttpEntity entity, ServletResponse response) {
-    if (entity==null) return;
-    
-    ContentType contentType= new ContentType(entity.getContentType(), newUrl);
-    if (contentType.isBinary) {
-      ContentUtils.copyBinary(entity, response);
-      return;
-    }
-    String text = ContentUtils.getContentText(entity, contentType.charset);
-    if (contentType.isJavaScript) {
-      ContentUtils.copyText(text, response, contentType);
-      return;
-    }
-    
-    text= translateText(text);
-    ContentUtils.copyText(text, response, contentType);
-  }
- 
-  private String translateText(String text) {
-    TextTranslator textTranslator= new TextTranslator(mapping);
-    return textTranslator.translate(text);
-  }
+    private final Mapping mapping;
+    private final String newUrl;
 
-  
+    public ContentTranslator(Mapping mapping, String newUrl) {
+        this.mapping = mapping;
+        this.newUrl = newUrl;
+    }
+
+    public void translate(HttpEntity entity, ServletResponse response) {
+        if (entity == null) {
+            return;
+        }
+
+        ContentType contentType = new ContentType(entity.getContentType(), newUrl);
+        if (contentType.isBinary) {
+            ContentUtils.copyBinary(entity, response);
+            return;
+        }
+        String text = ContentUtils.getContentText(entity, contentType.charset);
+        if (contentType.isJavaScript) {
+            ContentUtils.copyText(text, response, contentType);
+            return;
+        }
+
+        text = translateText(text);
+        ContentUtils.copyText(text, response, contentType);
+    }
+
+    private String translateText(String text) {
+        TextTranslator textTranslator = new TextTranslator(mapping);
+        return textTranslator.translate(text);
+    }
+
+    public void translateResponseCode(HttpResponse r, ServletResponse response) {
+        if (response instanceof HttpServletResponse) {
+            ((HttpServletResponse) response).setStatus(r.getStatusLine().getStatusCode());
+        }
+    }
 }

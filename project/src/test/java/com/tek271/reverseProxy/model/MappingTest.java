@@ -41,5 +41,5 @@ public class MappingTest {
     String expected= "http://localhost:8080/rp/maps/home";
     assertEquals(expected, actual);
   }
-  
+
 }

@@ -10,6 +10,7 @@ public class MappingsTest {
     Mappings mappings= ModelFactory.MAPPINGS;
     assertEquals(mappings.get(0), mappings.findByProxyUrl("http://localhost:8080/rp/maps/1"));
     assertEquals(mappings.get(1), mappings.findByProxyUrl("http://localhost:8080/rp/fb/2"));
+    assertEquals(mappings.get(2), mappings.findByProxyUrl("http://localhost:8081/minedata-kk/hjelpetekster"));
   }
   
   @Test public void testfindByHiddenUrl() {

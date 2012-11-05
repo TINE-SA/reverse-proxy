@@ -93,34 +93,37 @@ public class ProxyFilter implements Filter {
             UrlEncodedFormEntity entity = getEntity(request);
             HttpPost httppost = new HttpPost(newUrl);
             httppost.setEntity(entity);
-            addHttpOverrideMethodHeader(request, httppost);
+            addCustomHeaders(request, httppost);
             return httppost;
         } else if (method.equals("PUT")) {
             UrlEncodedFormEntity entity = getEntity(request);
             HttpPut httpPut = new HttpPut(newUrl);
             httpPut.setEntity(entity);
-            addHttpOverrideMethodHeader(request, httpPut);
+            addCustomHeaders(request, httpPut);
             return httpPut;
         } else if (method.equals("DELETE")) {
             UrlEncodedFormEntity entity = getEntity(request);
             HttpDeleteWithBody httpDelete = new HttpDeleteWithBody(newUrl);
             httpDelete.setEntity(entity);
-            addHttpOverrideMethodHeader(request, httpDelete);
+            addCustomHeaders(request, httpDelete);
             return httpDelete;
         } else {
-            return new HttpGet(newUrl);
+            HttpGet httpGet = new HttpGet(newUrl);
+            httpGet.addHeader("preferred-role", request.getHeader("preferred-role"));
+            return httpGet;
         }
     }
 
     @SuppressWarnings({ "unchecked" })
-    private static void addHttpOverrideMethodHeader(HttpServletRequest original, HttpEntityEnclosingRequest request) {
+    private static void addCustomHeaders(HttpServletRequest original, HttpEntityEnclosingRequest request) {
         Enumeration<String> en = original.getHeaderNames();
         while (en.hasMoreElements()) {
             String name = en.nextElement();
             if ("X-HTTP-Method-Override".equals(name)) {
                 request.setHeader(name, original.getHeader(name));
+            } else if ("preferred-role".equals(name)) {
+                request.setHeader(name, original.getHeader(name));
             }
-
         }
     }
 

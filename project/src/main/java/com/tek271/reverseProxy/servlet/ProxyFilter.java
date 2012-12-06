@@ -16,10 +16,15 @@ along with Tek271 Reverse Proxy Server.  If not, see http://www.gnu.org/licenses
  */
 package com.tek271.reverseProxy.servlet;
 
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
+import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.Enumeration;
+import java.util.Iterator;
 import java.util.List;
 import javax.servlet.Filter;
 import javax.servlet.FilterChain;
@@ -34,6 +39,12 @@ import com.tek271.reverseProxy.model.Mapping;
 import com.tek271.reverseProxy.text.UrlMapper;
 import com.tek271.reverseProxy.utils.HttpDeleteWithBody;
 import com.tek271.reverseProxy.utils.Tuple2;
+import org.apache.commons.fileupload.FileItem;
+import org.apache.commons.fileupload.FileItemFactory;
+import org.apache.commons.fileupload.FileUploadException;
+import org.apache.commons.fileupload.disk.DiskFileItemFactory;
+import org.apache.commons.fileupload.servlet.ServletFileUpload;
+import org.apache.http.Header;
 import org.apache.http.HttpEntity;
 import org.apache.http.HttpEntityEnclosingRequest;
 import org.apache.http.HttpResponse;
@@ -44,8 +55,13 @@ import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.client.methods.HttpPut;
 import org.apache.http.client.methods.HttpUriRequest;
+import org.apache.http.entity.mime.HttpMultipartMode;
+import org.apache.http.entity.mime.MultipartEntity;
+import org.apache.http.entity.mime.content.FileBody;
+import org.apache.http.entity.mime.content.StringBody;
 import org.apache.http.impl.client.DefaultHttpClient;
 import org.apache.http.message.BasicNameValuePair;
+import org.apache.http.params.HttpParams;
 
 public class ProxyFilter implements Filter {
 
@@ -90,9 +106,15 @@ public class ProxyFilter implements Filter {
     private static HttpUriRequest createNewRequest(HttpServletRequest request, String newUrl) throws UnsupportedEncodingException {
         String method = request.getMethod();
         if (method.equals("POST")) {
-            UrlEncodedFormEntity entity = getEntity(request);
             HttpPost httppost = new HttpPost(newUrl);
-            httppost.setEntity(entity);
+            if (ServletFileUpload.isMultipartContent(request)) {
+                MultipartEntity entity = getMultipartEntity(request);
+                httppost.setEntity(entity);
+            } else {
+                UrlEncodedFormEntity entity = getEntity(request);
+                httppost.setEntity(entity);
+
+            }
             addCustomHeaders(request, httppost);
             return httppost;
         } else if (method.equals("PUT")) {
@@ -114,6 +136,46 @@ public class ProxyFilter implements Filter {
         }
     }
 
+    private static MultipartEntity getMultipartEntity(HttpServletRequest request) {
+        MultipartEntity entity = new MultipartEntity(HttpMultipartMode.BROWSER_COMPATIBLE);
+        Enumeration<String> en = request.getParameterNames();
+        while (en.hasMoreElements()) {
+            String name = en.nextElement();
+            String value = request.getParameter(name);
+            try {
+                if (name.equals("file")) {
+                    FileItemFactory factory = new DiskFileItemFactory();
+                    ServletFileUpload upload = new ServletFileUpload(factory);
+                    upload.setSizeMax(10000000);// 10 Mo
+                    List items = upload.parseRequest(request);
+                    Iterator itr = items.iterator();
+                    while (itr.hasNext()) {
+                        FileItem item = (FileItem) itr.next();
+                        File file = new File(item.getName());
+                        FileOutputStream fos = new FileOutputStream(file);
+                        fos.write(item.get());
+                        fos.flush();
+                        fos.close();
+                        entity.addPart(name, new FileBody(file, "application/zip"));
+                    }
+                } else {
+                    entity.addPart(name, new StringBody(value.toString(), "text/plain", Charset.forName("UTF-8")));
+                }
+            } catch (UnsupportedEncodingException e) {
+                e.printStackTrace();  //To change body of catch statement use File | Settings | File Templates.
+            } catch (FileUploadException e) {
+                e.printStackTrace();  //To change body of catch statement use File | Settings | File Templates.
+            } catch (FileNotFoundException e) {
+                e.printStackTrace();  //To change body of catch statement use File | Settings | File Templates.
+            } catch (IOException e) {
+                e.printStackTrace();  //To change body of catch statement use File | Settings | File Templates.
+            }
+        }
+
+        return entity;
+
+    }
+
     @SuppressWarnings({ "unchecked" })
     private static void addCustomHeaders(HttpServletRequest original, HttpEntityEnclosingRequest request) {
         Enumeration<String> en = original.getHeaderNames();
@@ -123,7 +185,12 @@ public class ProxyFilter implements Filter {
                 request.setHeader(name, original.getHeader(name));
             } else if ("preferred-role".equals(name)) {
                 request.setHeader(name, original.getHeader(name));
+            } else if ("X-File-Name".equals(name)) {
+                request.setHeader(name, original.getHeader(name));
+            } else if ("X-Requested-With".equals(name)) {
+                request.setHeader(name, original.getHeader(name));
             }
+
         }
     }
 
@@ -144,12 +211,26 @@ public class ProxyFilter implements Filter {
             throws IOException {
         HttpClient httpclient = new DefaultHttpClient();
         HttpUriRequest httpRequest = createNewRequest(request, newUrl);
+
         HttpResponse r = httpclient.execute(httpRequest);
         HttpEntity entity = r.getEntity();
 
         ContentTranslator contentTranslator = new ContentTranslator(mapping, newUrl);
         contentTranslator.translate(entity, response);
         contentTranslator.translateResponseCode(r, response);
+    }
+
+    private static void printHeaders(HttpUriRequest s) {
+        Header[] en = s.getAllHeaders();
+        for (Header header : en) {
+            System.out.println("----" + header.getName() + ": " + header.getValue());
+        }
+    }
+
+    private static void printParams(HttpUriRequest request) {
+        HttpParams params = request.getParams();
+        System.out.println(params);
+
     }
 
 }

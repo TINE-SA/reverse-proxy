@@ -40,6 +40,10 @@ public class ContentTranslator {
         }
 
         ContentType contentType = new ContentType(entity.getContentType(), newUrl);
+        if (contentType.isMultipart) {
+            ContentUtils.copyBinary(entity, response);
+            return;
+        }
         if (contentType.isBinary) {
             ContentUtils.copyBinary(entity, response);
             return;

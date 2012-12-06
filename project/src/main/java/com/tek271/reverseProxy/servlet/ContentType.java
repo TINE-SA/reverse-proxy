@@ -16,53 +16,71 @@ along with Tek271 Reverse Proxy Server.  If not, see http://www.gnu.org/licenses
  */
 package com.tek271.reverseProxy.servlet;
 
-import static org.apache.commons.lang.StringUtils.*;
 import org.apache.http.Header;
 
+import static org.apache.commons.lang.StringUtils.*;
+
 public class ContentType {
-  private static final String DEFAULT_CHARSET= "UTF-8";
-  
-  public final String value;
-  public final String charset;
-  public final boolean isText;
-  public final boolean isBinary;
-  public final boolean isJavaScript;
-  public final String url;
-  
-  
-  public ContentType(Header header, String url) {
-    value= trimToEmpty( header.getValue() );
-    charset= extractCharset(value);
-    isText= isText(value);
-    isBinary= !isText;
-    this.url= url;
-    
-    String path= extractPath(url);
-    isJavaScript= isJavaScript(path);
-  }
-  
-  private static String extractCharset(String value) {
-    value= lowerCase( trimToEmpty(value));
-    String cs= substringAfter(value, "charset=");
-    if (isEmpty(cs)) return DEFAULT_CHARSET;
-    
-    cs= trimToEmpty(cs);
-    cs= trim(substringBefore(cs, ";"));
-    if (isEmpty(cs)) cs= DEFAULT_CHARSET;
-    return cs;
-  }
-  
-  private static boolean isText(String value) {
-    if (containsIgnoreCase(value, "image")) return false;
-    return true;
-  }
-  
-  private static boolean isJavaScript(String path) {
-    return endsWithIgnoreCase(path, ".js");
-  }
-  
-  private static String extractPath(String url) {
-    return substringBefore(url, "?");
-  }
-  
+    private static final String DEFAULT_CHARSET = "UTF-8";
+
+    public final String value;
+    public final String charset;
+    public final boolean isText;
+    public final boolean isBinary;
+    public final boolean isJavaScript;
+    public final String url;
+    public final boolean isMultipart;
+
+
+    public ContentType(Header header, String url) {
+        value = trimToEmpty(header.getValue());
+        charset = extractCharset(value);
+        isText = isText(value);
+        isBinary = !isText;
+        isMultipart = isMultipart(value);
+        this.url = url;
+
+        String path = extractPath(url);
+        isJavaScript = isJavaScript(path);
+    }
+
+    private static String extractCharset(String value) {
+        value = lowerCase(trimToEmpty(value));
+        String cs = substringAfter(value, "charset=");
+        if (isEmpty(cs)) {
+            return DEFAULT_CHARSET;
+        }
+
+        cs = trimToEmpty(cs);
+        cs = trim(substringBefore(cs, ";"));
+        if (isEmpty(cs)) {
+            cs = DEFAULT_CHARSET;
+        }
+        return cs;
+    }
+
+    private static boolean isText(String value) {
+        if (containsIgnoreCase(value, "image")) {
+            return false;
+        }
+
+        return true;
+    }
+
+    private static boolean isMultipart(String value) {
+        if (containsIgnoreCase(value, "multipart/form-data")) {
+            return true;
+        }
+
+        return false;
+    }
+
+    private static boolean isJavaScript(String path) {
+        return endsWithIgnoreCase(path, ".js");
+    }
+
+    private static String extractPath(String url) {
+        return substringBefore(url, "?");
+    }
+
 }

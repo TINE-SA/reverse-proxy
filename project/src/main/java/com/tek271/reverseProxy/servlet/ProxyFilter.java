@@ -16,10 +16,13 @@ along with Tek271 Reverse Proxy Server.  If not, see http://www.gnu.org/licenses
  */
 package com.tek271.reverseProxy.servlet;
 
+import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.io.UnsupportedEncodingException;
 import java.nio.charset.Charset;
 import java.util.ArrayList;
@@ -55,6 +58,7 @@ import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.client.methods.HttpPut;
 import org.apache.http.client.methods.HttpUriRequest;
+import org.apache.http.entity.StringEntity;
 import org.apache.http.entity.mime.HttpMultipartMode;
 import org.apache.http.entity.mime.MultipartEntity;
 import org.apache.http.entity.mime.content.FileBody;
@@ -103,7 +107,7 @@ public class ProxyFilter implements Filter {
      * Helper method for passing post-requests
      */
     @SuppressWarnings({ "JavaDoc" })
-    private static HttpUriRequest createNewRequest(HttpServletRequest request, String newUrl) throws UnsupportedEncodingException {
+    private static HttpUriRequest createNewRequest(HttpServletRequest request, String newUrl) throws IOException {
         String method = request.getMethod();
         if (method.equals("POST")) {
             HttpPost httppost = new HttpPost(newUrl);
@@ -111,20 +115,20 @@ public class ProxyFilter implements Filter {
                 MultipartEntity entity = getMultipartEntity(request);
                 httppost.setEntity(entity);
             } else {
-                UrlEncodedFormEntity entity = getEntity(request);
+                StringEntity entity = getEntity(request);
                 httppost.setEntity(entity);
 
             }
             addCustomHeaders(request, httppost);
             return httppost;
         } else if (method.equals("PUT")) {
-            UrlEncodedFormEntity entity = getEntity(request);
+            StringEntity entity = getEntity(request);
             HttpPut httpPut = new HttpPut(newUrl);
             httpPut.setEntity(entity);
             addCustomHeaders(request, httpPut);
             return httpPut;
         } else if (method.equals("DELETE")) {
-            UrlEncodedFormEntity entity = getEntity(request);
+            StringEntity entity = getEntity(request);
             HttpDeleteWithBody httpDelete = new HttpDeleteWithBody(newUrl);
             httpDelete.setEntity(entity);
             addCustomHeaders(request, httpDelete);
@@ -197,8 +201,28 @@ public class ProxyFilter implements Filter {
     }
 
     @SuppressWarnings({ "unchecked" })
-    private static UrlEncodedFormEntity getEntity(HttpServletRequest request)
-            throws UnsupportedEncodingException {
+    private static StringEntity getEntity(HttpServletRequest request)
+            throws IOException {
+        if (request.getHeader("Content-type").equalsIgnoreCase("application/json")) {
+            StringBuilder stringBuilder = new StringBuilder();
+            BufferedReader bufferedReader = null;
+            InputStream inputStream = request.getInputStream();
+            if (inputStream != null) {
+                bufferedReader = new BufferedReader(new InputStreamReader(inputStream));
+                char[] charBuffer = new char[512];
+                int bytesRead = -1;
+                while ((bytesRead = bufferedReader.read(charBuffer)) > 0) {
+                    stringBuilder.append(charBuffer, 0, bytesRead);
+                }
+                if (bufferedReader != null) {
+                    bufferedReader.close();
+                }
+            } else {
+                stringBuilder.append("");
+            }
+            return new StringEntity(stringBuilder.toString(), "UTF-8");
+
+        }
         List<NameValuePair> formparams = new ArrayList<NameValuePair>();
         Enumeration<String> en = request.getParameterNames();
         while (en.hasMoreElements()) {

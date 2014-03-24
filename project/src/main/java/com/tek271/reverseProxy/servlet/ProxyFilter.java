@@ -242,6 +242,7 @@ public class ProxyFilter implements Filter {
         HttpEntity entity = r.getEntity();
 
         ContentTranslator contentTranslator = new ContentTranslator(mapping, newUrl);
+        contentTranslator.updateHeaders(r, response);
         contentTranslator.translate(entity, response);
         contentTranslator.translateResponseCode(r, response);
     }

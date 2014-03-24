@@ -21,6 +21,7 @@ import javax.servlet.http.HttpServletResponse;
 
 import com.tek271.reverseProxy.model.Mapping;
 import com.tek271.reverseProxy.text.TextTranslator;
+import org.apache.http.Header;
 import org.apache.http.HttpEntity;
 import org.apache.http.HttpResponse;
 
@@ -66,6 +67,16 @@ public class ContentTranslator {
     public void translateResponseCode(HttpResponse r, ServletResponse response) {
         if (response instanceof HttpServletResponse) {
             ((HttpServletResponse) response).setStatus(r.getStatusLine().getStatusCode());
+        }
+    }
+
+    public void updateHeaders(HttpResponse r, ServletResponse response) {
+        if (response instanceof HttpServletResponse) {
+            Header[] allHeaders = r.getAllHeaders();
+            for (Header header : allHeaders) {
+                ((HttpServletResponse) response).setHeader(header.getName(), header.getValue());
+            }
+
         }
     }
 }

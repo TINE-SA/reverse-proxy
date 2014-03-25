@@ -68,6 +68,7 @@ import org.apache.http.message.BasicNameValuePair;
 import org.apache.http.params.HttpParams;
 
 public class ProxyFilter implements Filter {
+    private static final String APPLICATION_JSON = "application/json";
 
     public void init(FilterConfig filterConfig) throws ServletException {
     }
@@ -203,7 +204,7 @@ public class ProxyFilter implements Filter {
     @SuppressWarnings({ "unchecked" })
     private static StringEntity getEntity(HttpServletRequest request)
             throws IOException {
-        if (request.getHeader("Content-type").equalsIgnoreCase("application/json")) {
+        if (APPLICATION_JSON.equalsIgnoreCase(request.getHeader("Content-type"))) {
             StringBuilder stringBuilder = new StringBuilder();
             BufferedReader bufferedReader = null;
             InputStream inputStream = request.getInputStream();

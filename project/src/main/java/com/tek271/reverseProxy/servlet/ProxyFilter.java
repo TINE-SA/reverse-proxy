@@ -186,7 +186,7 @@ public class ProxyFilter implements Filter {
         Enumeration<String> en = original.getHeaderNames();
         while (en.hasMoreElements()) {
             String name = en.nextElement();
-            if (contains(skipElements, name)){
+            if (contains(skipElements, name)) {
                 continue;
             } else if ("X-HTTP-Method-Override".equals(name)) {
                 request.setHeader(name, original.getHeader(name));
@@ -208,7 +208,9 @@ public class ProxyFilter implements Filter {
             return false;
         }
         for (String skipElement : skipElements) {
-            skipElement.equalsIgnoreCase(name);
+            if (skipElement.equalsIgnoreCase(name)) {
+                return true;
+            }
         }
         return false;
 

@@ -115,12 +115,12 @@ public class ProxyFilter implements Filter {
             if (ServletFileUpload.isMultipartContent(request)) {
                 MultipartEntity entity = getMultipartEntity(request);
                 httppost.setEntity(entity);
+                addCustomHeaders(request, httppost, "Content-Type");
             } else {
                 StringEntity entity = getEntity(request);
                 httppost.setEntity(entity);
-
+                addCustomHeaders(request, httppost);
             }
-            addCustomHeaders(request, httppost);
             return httppost;
         } else if (method.equals("PUT")) {
             StringEntity entity = getEntity(request);
@@ -182,11 +182,13 @@ public class ProxyFilter implements Filter {
     }
 
     @SuppressWarnings({ "unchecked" })
-    private static void addCustomHeaders(HttpServletRequest original, HttpEntityEnclosingRequest request) {
+    private static void addCustomHeaders(HttpServletRequest original, HttpEntityEnclosingRequest request, String... skipElements) {
         Enumeration<String> en = original.getHeaderNames();
         while (en.hasMoreElements()) {
             String name = en.nextElement();
-            if ("X-HTTP-Method-Override".equals(name)) {
+            if (contains(skipElements, name)){
+                continue;
+            } else if ("X-HTTP-Method-Override".equals(name)) {
                 request.setHeader(name, original.getHeader(name));
             } else if ("preferred-role".equals(name)) {
                 request.setHeader(name, original.getHeader(name));
@@ -199,6 +201,17 @@ public class ProxyFilter implements Filter {
             }
 
         }
+    }
+
+    private static boolean contains(String[] skipElements, String name) {
+        if (skipElements == null || skipElements.length == 0) {
+            return false;
+        }
+        for (String skipElement : skipElements) {
+            skipElement.equalsIgnoreCase(name);
+        }
+        return false;
+
     }
 
     @SuppressWarnings({ "unchecked" })

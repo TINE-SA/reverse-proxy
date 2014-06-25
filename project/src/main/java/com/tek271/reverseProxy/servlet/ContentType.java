@@ -33,15 +33,22 @@ public class ContentType {
 
 
     public ContentType(Header header, String url) {
-        value = trimToEmpty(header.getValue());
-        charset = extractCharset(value);
-        isText = isText(value);
-        isBinary = !isText;
-        isMultipart = isMultipart(value);
         this.url = url;
-
         String path = extractPath(url);
         isJavaScript = isJavaScript(path);
+        if (header != null) {
+            value = trimToEmpty(header.getValue());
+            charset = extractCharset(value);
+            isText = isText(value);
+            isBinary = !isText;
+            isMultipart = isMultipart(value);
+        } else {
+            value = "";
+            charset = DEFAULT_CHARSET;
+            isText = true;
+            isBinary = false;
+            isMultipart = false;
+        }
     }
 
     private static String extractCharset(String value) {

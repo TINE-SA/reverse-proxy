@@ -224,7 +224,7 @@ public class ProxyFilter implements Filter {
             BufferedReader bufferedReader = null;
             InputStream inputStream = request.getInputStream();
             if (inputStream != null) {
-                bufferedReader = new BufferedReader(new InputStreamReader(inputStream));
+                bufferedReader = new BufferedReader(new InputStreamReader(inputStream, "UTF-8"));
                 char[] charBuffer = new char[512];
                 int bytesRead = -1;
                 while ((bytesRead = bufferedReader.read(charBuffer)) > 0) {

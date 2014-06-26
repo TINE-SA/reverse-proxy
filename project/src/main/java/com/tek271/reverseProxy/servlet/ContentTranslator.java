@@ -35,7 +35,7 @@ public class ContentTranslator {
         this.newUrl = newUrl;
     }
 
-    public void translate(HttpEntity entity, ServletResponse response) {
+    public void translate(HttpResponse r, HttpEntity entity, ServletResponse response) {
         if (entity == null) {
             return;
         }
@@ -43,20 +43,23 @@ public class ContentTranslator {
         ContentType contentType = new ContentType(entity.getContentType(), newUrl);
         if (contentType.isMultipart) {
             ContentUtils.copyBinary(entity, response);
+            translateResponseCode(r, response, "");
             return;
         }
         if (contentType.isBinary) {
             ContentUtils.copyBinary(entity, response);
+            translateResponseCode(r, response, "");
             return;
         }
         String text = ContentUtils.getContentText(entity, contentType.charset);
-        if (contentType.isJavaScript) {
-            ContentUtils.copyText(text, response, contentType);
-            return;
+        response.setContentType(contentType.value);
+
+        if (!contentType.isJavaScript) {
+            text = translateText(text);
         }
 
-        text = translateText(text);
-        ContentUtils.copyText(text, response, contentType);
+        translateResponseCode(r, response, text);
+        ContentUtils.copyText(text, response);
     }
 
     private String translateText(String text) {
@@ -64,9 +67,10 @@ public class ContentTranslator {
         return textTranslator.translate(text);
     }
 
-    public void translateResponseCode(HttpResponse r, ServletResponse response) {
+    public void translateResponseCode(HttpResponse r, ServletResponse response, String text) {
         if (response instanceof HttpServletResponse) {
-            ((HttpServletResponse) response).setStatus(r.getStatusLine().getStatusCode());
+            int statusCode = r.getStatusLine().getStatusCode();
+            ((HttpServletResponse) response).setStatus(statusCode);
         }
     }
 

@@ -39,9 +39,7 @@ public class ContentUtils {
     }
   }
   
-  public static void copyText(String text, ServletResponse response, ContentType contentType) {
-    //response.setCharacterEncoding(contentType.charset);
-    response.setContentType(contentType.value);
+  public static void copyText(String text, ServletResponse response) {
     try {
       response.getWriter().print(text);
     } catch (IOException e) {

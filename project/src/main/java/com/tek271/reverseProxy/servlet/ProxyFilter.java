@@ -69,6 +69,9 @@ import org.apache.http.params.HttpParams;
 
 public class ProxyFilter implements Filter {
     private static final String APPLICATION_JSON = "application/json";
+    private static final String STRING_CONTENT_LENGTH_HEADER_NAME = "Content-Length";
+    private static final String STRING_HOST_HEADER_NAME = "Host";
+
 
     public void init(FilterConfig filterConfig) throws ServletException {
     }
@@ -136,8 +139,25 @@ public class ProxyFilter implements Filter {
             return httpDelete;
         } else {
             HttpGet httpGet = new HttpGet(newUrl);
-            httpGet.addHeader("preferred-role", request.getHeader("preferred-role"));
+            addCustomGetHeaders(request, httpGet);
             return httpGet;
+        }
+    }
+
+    private static void addCustomGetHeaders(HttpServletRequest request, HttpGet httpGet) {
+        httpGet.addHeader("preferred-role", request.getHeader("preferred-role"));
+        Enumeration headerNames = request.getHeaderNames();
+        while (headerNames.hasMoreElements()) {
+            String headerName = (String) headerNames.nextElement();
+            Enumeration enumerationOfHeaderValues = request.getHeaders(headerName);
+            while (enumerationOfHeaderValues.hasMoreElements()) {
+                String headerValue = (String) enumerationOfHeaderValues.nextElement();
+                if (headerName.equalsIgnoreCase("accept")) {
+                    httpGet.setHeader(headerName, headerValue);
+                }
+            }
+
+
         }
     }
 

@@ -27,6 +27,7 @@ import org.apache.http.HttpResponse;
 
 public class ContentTranslator {
 
+    private static final String STRING_CONTENT_LENGTH_HEADER_NAME = "Content-Length";
     private final Mapping mapping;
     private final String newUrl;
 
@@ -78,6 +79,9 @@ public class ContentTranslator {
         if (response instanceof HttpServletResponse) {
             Header[] allHeaders = r.getAllHeaders();
             for (Header header : allHeaders) {
+                if (header.getName().equalsIgnoreCase(STRING_CONTENT_LENGTH_HEADER_NAME)) {
+                    continue;
+                }
                 ((HttpServletResponse) response).setHeader(header.getName(), header.getValue());
             }
 

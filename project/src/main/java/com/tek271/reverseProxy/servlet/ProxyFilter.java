@@ -216,6 +216,8 @@ public class ProxyFilter implements Filter {
                 request.setHeader(name, original.getHeader(name));
             } else if ("X-Requested-With".equals(name)) {
                 request.setHeader(name, original.getHeader(name));
+            } else if ("X-Requested-By".equals(name)) {
+                request.setHeader(name, original.getHeader(name));
             } else if ("Content-type".equalsIgnoreCase(name)) {
                 request.setHeader(name, original.getHeader(name));
             }

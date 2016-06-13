@@ -146,6 +146,7 @@ public class ProxyFilter implements Filter {
 
     private static void addCustomGetHeaders(HttpServletRequest request, HttpGet httpGet) {
         httpGet.addHeader("preferred-role", request.getHeader("preferred-role"));
+        httpGet.addHeader("X-Source", request.getHeader("X-Source"));
         Enumeration headerNames = request.getHeaderNames();
         while (headerNames.hasMoreElements()) {
             String headerName = (String) headerNames.nextElement();
@@ -209,6 +210,8 @@ public class ProxyFilter implements Filter {
             if (contains(skipElements, name)) {
                 continue;
             } else if ("X-HTTP-Method-Override".equals(name)) {
+                request.setHeader(name, original.getHeader(name));
+            } else if ("X-Source".equals(name)) {
                 request.setHeader(name, original.getHeader(name));
             } else if ("preferred-role".equals(name)) {
                 request.setHeader(name, original.getHeader(name));

@@ -16,67 +16,55 @@ along with Tek271 Reverse Proxy Server.  If not, see http://www.gnu.org/licenses
  */
 package com.tek271.reverseProxy.servlet;
 
-import java.io.BufferedReader;
-import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.io.UnsupportedEncodingException;
-import java.nio.charset.Charset;
-import java.util.ArrayList;
-import java.util.Enumeration;
-import java.util.Iterator;
-import java.util.List;
-import javax.servlet.Filter;
-import javax.servlet.FilterChain;
-import javax.servlet.FilterConfig;
-import javax.servlet.ServletException;
-import javax.servlet.ServletRequest;
-import javax.servlet.ServletResponse;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
+import java.io.*;
+import java.util.*;
+import java.util.stream.Stream;
+import javax.servlet.*;
+import javax.servlet.http.*;
 
+import com.google.common.base.Charsets;
 import com.tek271.reverseProxy.model.Mapping;
 import com.tek271.reverseProxy.text.UrlMapper;
-import com.tek271.reverseProxy.utils.HttpDeleteWithBody;
-import com.tek271.reverseProxy.utils.Tuple2;
-import org.apache.commons.fileupload.FileItem;
-import org.apache.commons.fileupload.FileItemFactory;
-import org.apache.commons.fileupload.FileUploadException;
+import com.tek271.reverseProxy.utils.*;
+import org.apache.commons.fileupload.*;
 import org.apache.commons.fileupload.disk.DiskFileItemFactory;
 import org.apache.commons.fileupload.servlet.ServletFileUpload;
-import org.apache.http.Header;
-import org.apache.http.HttpEntity;
-import org.apache.http.HttpEntityEnclosingRequest;
-import org.apache.http.HttpResponse;
-import org.apache.http.NameValuePair;
+import org.apache.http.*;
 import org.apache.http.client.HttpClient;
 import org.apache.http.client.entity.UrlEncodedFormEntity;
-import org.apache.http.client.methods.HttpGet;
-import org.apache.http.client.methods.HttpPost;
-import org.apache.http.client.methods.HttpPut;
-import org.apache.http.client.methods.HttpUriRequest;
+import org.apache.http.client.methods.*;
 import org.apache.http.entity.StringEntity;
-import org.apache.http.entity.mime.HttpMultipartMode;
-import org.apache.http.entity.mime.MultipartEntity;
-import org.apache.http.entity.mime.content.FileBody;
-import org.apache.http.entity.mime.content.StringBody;
+import org.apache.http.entity.mime.*;
+import org.apache.http.entity.mime.content.*;
 import org.apache.http.impl.client.DefaultHttpClient;
 import org.apache.http.message.BasicNameValuePair;
-import org.apache.http.params.HttpParams;
+
+import static java.util.stream.Collectors.toSet;
 
 public class ProxyFilter implements Filter {
     private static final String APPLICATION_JSON = "application/json";
-    private static final String STRING_CONTENT_LENGTH_HEADER_NAME = "Content-Length";
-    private static final String STRING_HOST_HEADER_NAME = "Host";
+    private static final Collection<String> HEADERS_FOR_FORWARDING = Stream.of(
+            "X-HTTP-Method-Override",
+            "X-Source",
+            "preferred-role",
+            "X-File-Name",
+            "X-Requested-With",
+            "X-Requested-By",
+            "Content-type",
+            "Accept",
+            "iv-user",
+            "preferred-role",
+            "iv-groups"
+    ).map(String::toLowerCase).collect(toSet());
 
-
-    public void init(FilterConfig filterConfig) throws ServletException {
+    @Override
+    public void init(FilterConfig filterConfig) {
+        // do nothing
     }
 
+    @Override
     public void destroy() {
+        // do nothing
     }
 
     public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain)
@@ -110,7 +98,7 @@ public class ProxyFilter implements Filter {
     /**
      * Helper method for passing post-requests
      */
-    @SuppressWarnings({ "JavaDoc" })
+    @SuppressWarnings({ "JavaDoc", "IfCanBeSwitch" })
     private static HttpUriRequest createNewRequest(HttpServletRequest request, String newUrl) throws IOException {
         String method = request.getMethod();
         if (method.equals("POST")) {
@@ -139,32 +127,14 @@ public class ProxyFilter implements Filter {
             return httpDelete;
         } else {
             HttpGet httpGet = new HttpGet(newUrl);
-            addCustomGetHeaders(request, httpGet);
+            addCustomHeaders(request, httpGet);
             return httpGet;
-        }
-    }
-
-    private static void addCustomGetHeaders(HttpServletRequest request, HttpGet httpGet) {
-        httpGet.addHeader("preferred-role", request.getHeader("preferred-role"));
-        httpGet.addHeader("X-Source", request.getHeader("X-Source"));
-        Enumeration headerNames = request.getHeaderNames();
-        while (headerNames.hasMoreElements()) {
-            String headerName = (String) headerNames.nextElement();
-            Enumeration enumerationOfHeaderValues = request.getHeaders(headerName);
-            while (enumerationOfHeaderValues.hasMoreElements()) {
-                String headerValue = (String) enumerationOfHeaderValues.nextElement();
-                if (headerName.equalsIgnoreCase("accept")) {
-                    httpGet.setHeader(headerName, headerValue);
-                }
-            }
-
-
         }
     }
 
     private static MultipartEntity getMultipartEntity(HttpServletRequest request) {
         MultipartEntity entity = new MultipartEntity(HttpMultipartMode.BROWSER_COMPATIBLE);
-        Enumeration<String> en = request.getParameterNames();
+        @SuppressWarnings("unchecked") Enumeration<String> en = request.getParameterNames();
         while (en.hasMoreElements()) {
             String name = en.nextElement();
             String value = request.getParameter(name);
@@ -173,28 +143,20 @@ public class ProxyFilter implements Filter {
                     FileItemFactory factory = new DiskFileItemFactory();
                     ServletFileUpload upload = new ServletFileUpload(factory);
                     upload.setSizeMax(10000000);// 10 Mo
-                    List items = upload.parseRequest(request);
-                    Iterator itr = items.iterator();
-                    while (itr.hasNext()) {
-                        FileItem item = (FileItem) itr.next();
+                    @SuppressWarnings("unchecked") List<FileItem> items = upload.parseRequest(request);
+                    for (FileItem item : items) {
                         File file = new File(item.getName());
-                        FileOutputStream fos = new FileOutputStream(file);
-                        fos.write(item.get());
-                        fos.flush();
-                        fos.close();
+                        try (FileOutputStream fos = new FileOutputStream(file)) {
+                            fos.write(item.get());
+                            fos.flush();
+                        }
                         entity.addPart(name, new FileBody(file, "application/zip"));
                     }
                 } else {
-                    entity.addPart(name, new StringBody(value.toString(), "text/plain", Charset.forName("UTF-8")));
+                    entity.addPart(name, new StringBody(value, "text/plain", Charsets.UTF_8));
                 }
-            } catch (UnsupportedEncodingException e) {
-                e.printStackTrace();  //To change body of catch statement use File | Settings | File Templates.
-            } catch (FileUploadException e) {
-                e.printStackTrace();  //To change body of catch statement use File | Settings | File Templates.
-            } catch (FileNotFoundException e) {
-                e.printStackTrace();  //To change body of catch statement use File | Settings | File Templates.
-            } catch (IOException e) {
-                e.printStackTrace();  //To change body of catch statement use File | Settings | File Templates.
+            } catch (FileUploadException | IOException e) {
+                e.printStackTrace();
             }
         }
 
@@ -203,28 +165,13 @@ public class ProxyFilter implements Filter {
     }
 
     @SuppressWarnings({ "unchecked" })
-    private static void addCustomHeaders(HttpServletRequest original, HttpEntityEnclosingRequest request, String... skipElements) {
+    private static void addCustomHeaders(HttpServletRequest original, HttpUriRequest request, String... skipElements) {
         Enumeration<String> en = original.getHeaderNames();
         while (en.hasMoreElements()) {
             String name = en.nextElement();
-            if (contains(skipElements, name)) {
-                continue;
-            } else if ("X-HTTP-Method-Override".equals(name)) {
-                request.setHeader(name, original.getHeader(name));
-            } else if ("X-Source".equals(name)) {
-                request.setHeader(name, original.getHeader(name));
-            } else if ("preferred-role".equals(name)) {
-                request.setHeader(name, original.getHeader(name));
-            } else if ("X-File-Name".equals(name)) {
-                request.setHeader(name, original.getHeader(name));
-            } else if ("X-Requested-With".equals(name)) {
-                request.setHeader(name, original.getHeader(name));
-            } else if ("X-Requested-By".equals(name)) {
-                request.setHeader(name, original.getHeader(name));
-            } else if ("Content-type".equalsIgnoreCase(name)) {
+            if (!contains(skipElements, name) && HEADERS_FOR_FORWARDING.contains(name.toLowerCase())) {
                 request.setHeader(name, original.getHeader(name));
             }
-
         }
     }
 
@@ -238,7 +185,6 @@ public class ProxyFilter implements Filter {
             }
         }
         return false;
-
     }
 
     @SuppressWarnings({ "unchecked" })
@@ -246,25 +192,21 @@ public class ProxyFilter implements Filter {
             throws IOException {
         if (APPLICATION_JSON.equalsIgnoreCase(request.getHeader("Content-type"))) {
             StringBuilder stringBuilder = new StringBuilder();
-            BufferedReader bufferedReader = null;
+            BufferedReader bufferedReader;
             InputStream inputStream = request.getInputStream();
             if (inputStream != null) {
-                bufferedReader = new BufferedReader(new InputStreamReader(inputStream, "UTF-8"));
+                bufferedReader = new BufferedReader(new InputStreamReader(inputStream, Charsets.UTF_8));
                 char[] charBuffer = new char[512];
-                int bytesRead = -1;
+                int bytesRead;
                 while ((bytesRead = bufferedReader.read(charBuffer)) > 0) {
                     stringBuilder.append(charBuffer, 0, bytesRead);
                 }
-                if (bufferedReader != null) {
-                    bufferedReader.close();
-                }
-            } else {
-                stringBuilder.append("");
+                bufferedReader.close();
             }
             return new StringEntity(stringBuilder.toString(), "UTF-8");
 
         }
-        List<NameValuePair> formparams = new ArrayList<NameValuePair>();
+        List<NameValuePair> formparams = new ArrayList<>();
         Enumeration<String> en = request.getParameterNames();
         while (en.hasMoreElements()) {
             String name = en.nextElement();
@@ -285,19 +227,6 @@ public class ProxyFilter implements Filter {
         ContentTranslator contentTranslator = new ContentTranslator(mapping, newUrl);
         contentTranslator.updateHeaders(r, response);
         contentTranslator.translate(r, entity, response);
-    }
-
-    private static void printHeaders(HttpUriRequest s) {
-        Header[] en = s.getAllHeaders();
-        for (Header header : en) {
-            System.out.println("----" + header.getName() + ": " + header.getValue());
-        }
-    }
-
-    private static void printParams(HttpUriRequest request) {
-        HttpParams params = request.getParams();
-        System.out.println(params);
-
     }
 
 }

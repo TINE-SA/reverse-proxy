@@ -54,7 +54,8 @@ public class ProxyFilter implements Filter {
             "Accept",
             "iv-user",
             "preferred-role",
-            "iv-groups"
+            "iv-groups",
+            "Authorization"
     ).map(String::toLowerCase).collect(toSet());
 
     @Override
